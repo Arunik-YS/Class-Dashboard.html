@@ -496,6 +496,29 @@
             }
         }
 
+        function autoFitLunchText(el) {
+            if(!el || el.clientWidth === 0) return;
+
+            const minSize = 14;  // 너무 작아지지 않게 방어 (최소 크기)
+            const maxSize = 100; // 아주 큼직한 사이즈부터 시작 (최대 크기)
+            let currentSize = maxSize;
+
+            // 자동 줄바꿈을 막고(선생님이 친 엔터만 적용됨) 계산하기 위해 'pre' 속성 사용
+            el.style.whiteSpace = 'pre';
+            el.style.fontSize = currentSize + 'px';
+
+            // 글자가 박스의 가로(너비)나 세로(높이)를 벗어나면 글자 크기를 1px씩 줄임
+            while ((el.scrollWidth > el.clientWidth - 10 || el.scrollHeight > el.clientHeight - 10) && currentSize > minSize) {
+                currentSize--;
+                el.style.fontSize = currentSize + 'px';
+            }
+
+            // 만약 최소 크기(14px)까지 줄였는데도 가로가 삐져나간다면, 어쩔 수 없이 자동 줄바꿈 허용
+            if (currentSize === minSize && el.scrollWidth > el.clientWidth) {
+                el.style.whiteSpace = 'pre-wrap';
+            }
+        }
+
         // =========================================
         // 3. 구글 시트 연동 및 화면 렌더링
         // =========================================
@@ -872,7 +895,7 @@
                 if (currentDayNum === 0 || currentDayNum === 6) currentDayNum = 1;
                 if (dayId === currentDayNum) {
                     document.getElementById('today-lunch-content').innerText = value;
-                    autoFitText(document.getElementById('today-lunch-content'), 50);
+                    autoFitLunchText(document.getElementById('today-lunch-content'));
                 }
             }, 1000);
         }
@@ -885,7 +908,7 @@
             const el = document.getElementById('today-lunch-content');
             if (el) {
                 el.innerText = savedLunch;
-                setTimeout(() => autoFitText(el, 50), 50);
+                setTimeout(() => autoFitLunchText(el), 50);
             }
         }
 
@@ -895,7 +918,7 @@
         window.addEventListener('resize', () => {
             if(document.getElementById('notice-tab').classList.contains('active')) { autoFitAllNoticeTexts(); }
             if(document.getElementById('memo-tab').classList.contains('active')) { autoFitText(document.getElementById('memo-task-content'), 120); }
-            if(document.getElementById('student-tab').classList.contains('active')) { autoFitText(document.getElementById('today-lunch-content'), 50); } // 🌟 이 부분이 바뀌었습니다!
+            if(document.getElementById('student-tab').classList.contains('active')) { autoFitLunchText(document.getElementById('today-lunch-content')); }
         });
 
         window.onload = function() {
