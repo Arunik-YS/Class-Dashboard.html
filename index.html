@@ -96,10 +96,42 @@
         /* 1분 전 시계 빨강색 강조 스타일 */
         .realtime-clock.imminent-time { color: #ef4444 !important; text-shadow: 3px 3px 6px rgba(239, 68, 68, 0.25) !important; }
 
-        .student-memo-section { flex: 1; background-color: #fffbeb; border: 2px solid #fde047; border-radius: 20px; display: flex; flex-direction: column; padding: 20px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); min-height: 0; }
-        .student-memo-title { font-size: 1.8rem; color: #854d0e; margin-top: 0; margin-bottom: 10px; border-bottom: 2px dashed #fde047; padding-bottom: 10px; }
-        .student-memo-content { flex: 1; outline: none; line-height: 1.3; color: #333; overflow-x: hidden; overflow-y: auto; padding: 5px; border-radius: 8px; transition: background-color 0.2s; }
-        .student-memo-content:focus { background-color: rgba(255,255,255,0.6); box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); }
+        /* 🌟 급식 영역 스타일 (시간 1 : 급식 2 비율) */
+        .lunch-section { 
+            flex: 2; /* 2칸 비율 차지 */
+            background-color: #f0fdf4; 
+            border: 2px solid #bbf7d0; 
+            border-radius: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 20px; 
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            min-height: 0; 
+        }
+        .lunch-title { 
+            font-size: 1.8rem; 
+            color: #166534; 
+            margin-top: 0; 
+            margin-bottom: 10px;
+            border-bottom: 2px dashed #bbf7d0; 
+            padding-bottom: 10px; 
+            text-align: center;
+        }
+        .lunch-content { 
+            flex: 1; 
+            outline: none; 
+            line-height: 1.5; 
+            color: #333; 
+            overflow-x: hidden; 
+            overflow-y: auto; 
+            padding: 10px; 
+            border-radius: 8px; 
+            white-space: pre-wrap; 
+            text-align: center; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center;
+        }
 
         /* =========================================
            2. 알림장 탭 
@@ -242,9 +274,9 @@
                     <div class="clock-title">현재 시간</div>
                     <div class="realtime-clock" id="realtime-clock">00:00:00</div>
                 </div>
-                <div class="student-memo-section">
-                    <h3 class="student-memo-title">📝 간단 메모</h3>
-                    <div id="student-memo-content" class="student-memo-content" contenteditable="true" oninput="saveStudentMemo()"></div>
+                <div class="lunch-section">
+                    <h3 class="lunch-title">🍽️ 오늘의 급식</h3>
+                    <div id="today-lunch-content" class="lunch-content">등록된 급식 메뉴가 없습니다.</div>
                 </div>
             </div>
         </div>
@@ -464,37 +496,6 @@
             }
         }
 
-        function autoFitStudentMemo() {
-            const el = document.getElementById('student-memo-content');
-            if(!el || el.clientHeight === 0) return; 
-            
-            const minSize = 14; const maxSize = 80; 
-            let text = el.innerText || '';
-            text = text.replace(/\n+$/, ''); 
-            let hasManualBreaks = text.includes('\n');
-
-            el.style.fontSize = maxSize + 'px';
-            let currentSize = maxSize;
-
-            if (!hasManualBreaks) {
-                el.style.whiteSpace = 'nowrap';
-                while ((el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight) && currentSize > minSize) {
-                    currentSize--; el.style.fontSize = currentSize + 'px';
-                }
-                if (currentSize === minSize && el.scrollWidth > el.clientWidth) {
-                    el.style.whiteSpace = 'pre-wrap';
-                    while (el.scrollHeight > el.clientHeight && currentSize > minSize) {
-                        currentSize--; el.style.fontSize = currentSize + 'px';
-                    }
-                }
-            } else {
-                el.style.whiteSpace = 'pre-wrap';
-                while (el.scrollHeight > el.clientHeight && currentSize > minSize) {
-                    currentSize--; el.style.fontSize = currentSize + 'px';
-                }
-            }
-        }
-
         // =========================================
         // 3. 구글 시트 연동 및 화면 렌더링
         // =========================================
@@ -556,8 +557,8 @@
                 loadTimetable();
                 loadNoticeTabs();
                 loadMemoTask();
-                loadStudentMemo();
-                initAdminForms(); 
+                loadTodayLunch(); // 🌟 이 부분이 바뀌었습니다!
+                initAdminForms();
             }
         }
         function saveToSheet(key, value) {
@@ -642,24 +643,6 @@
         
         // 🌟 여러 입력창의 타이머를 관리할 객체 추가
         let saveTimeouts = {};
-
-        function saveStudentMemo() {
-            const el = document.getElementById('student-memo-content');
-            autoFitStudentMemo(); // 글자 크기 맞춤은 즉시 실행
-            
-            // 1초 동안 추가 입력이 없으면 저장
-            clearTimeout(saveTimeouts['studentMemo']);
-            saveTimeouts['studentMemo'] = setTimeout(() => {
-                saveToSheet('studentMemoContent', el.innerHTML); 
-            }, 1000);
-        }
-
-        function loadStudentMemo() {
-            const saved = sheetMemoData['studentMemoContent'];
-            const el = document.getElementById('student-memo-content');
-            if (el && saved) { el.innerHTML = saved; }
-            autoFitStudentMemo();
-        }
 
         function saveTeacherTalk() {
             const el = document.getElementById('teacher-talk-content');
@@ -808,10 +791,22 @@
                     tableHTML += `<tr><td>${i}교시</td><td><input type="text" id="sub-${day.id}-${i}" value="${rowData.subject}"></td><td><input type="text" id="unit-${day.id}-${i}" value="${rowData.unit}"></td><td><input type="text" id="text-${day.id}-${i}" value="${rowData.textbook}"></td><td><input type="text" id="mat-${day.id}-${i}" value="${rowData.materials}"></td></tr>`;
                 }
                 tableHTML += `</tbody></table>`;
-                panel.innerHTML = tableHTML; panelsContainer.appendChild(panel);
+                
+                // --- 여기서부터 추가 ---
+                let lunchSaved = sheetMemoData['lunch_menu_' + day.id] || '';
+                let lunchHTML = `
+                    <div style="margin-top: 15px; padding: 15px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+                        <h4 style="margin:0 0 10px 0; color:#166534; font-size:1.3rem;">🍽️ ${day.name} 급식 메뉴</h4>
+                        <textarea id="lunch-input-${day.id}" style="width: 100%; height: 80px; padding: 10px; font-family: 'Jua', sans-serif; font-size: 1.2rem; border: 1px solid #86efac; border-radius: 8px; resize: none;" oninput="saveLunchMenu(${day.id}, this.value)" placeholder="이곳에 ${day.name} 급식 메뉴를 입력하세요...">${lunchSaved}</textarea>
+                    </div>
+                `;
+                panel.innerHTML = tableHTML + lunchHTML; 
+                // --- 여기까지 추가 ---
+                
+                panelsContainer.appendChild(panel);
             });
         }
-
+        
         // 🌟 추가됨: 시간 변경 시 즉시 구글 시트에 자동 저장
         function saveTimeSetting(id, type, value) {
             // 🌟 핵심: 구글 시트의 날짜 자동변환을 막기 위해 앞에 '_' 기호를 붙여서 강제 전송
@@ -866,12 +861,41 @@
         }
 
         // =========================================
+        // 🌟 오늘의 급식 관련 함수
+        // =========================================
+        function saveLunchMenu(dayId, value) {
+            clearTimeout(saveTimeouts['lunch_' + dayId]);
+            saveTimeouts['lunch_' + dayId] = setTimeout(() => {
+                saveToSheet('lunch_menu_' + dayId, value); 
+                
+                let currentDayNum = new Date().getDay();
+                if (currentDayNum === 0 || currentDayNum === 6) currentDayNum = 1;
+                if (dayId === currentDayNum) {
+                    document.getElementById('today-lunch-content').innerText = value;
+                    autoFitText(document.getElementById('today-lunch-content'), 50);
+                }
+            }, 1000);
+        }
+
+        function loadTodayLunch() {
+            let currentDayNum = new Date().getDay();
+            if (currentDayNum === 0 || currentDayNum === 6) currentDayNum = 1; 
+            
+            const savedLunch = sheetMemoData['lunch_menu_' + currentDayNum] || '등록된 급식 메뉴가 없습니다.';
+            const el = document.getElementById('today-lunch-content');
+            if (el) {
+                el.innerText = savedLunch;
+                setTimeout(() => autoFitText(el, 50), 50);
+            }
+        }
+
+        // =========================================
         // 7. 창 크기 조절 대응 및 초기 실행
         // =========================================
         window.addEventListener('resize', () => {
             if(document.getElementById('notice-tab').classList.contains('active')) { autoFitAllNoticeTexts(); }
             if(document.getElementById('memo-tab').classList.contains('active')) { autoFitText(document.getElementById('memo-task-content'), 120); }
-            if(document.getElementById('student-tab').classList.contains('active')) { autoFitStudentMemo(); }
+            if(document.getElementById('student-tab').classList.contains('active')) { autoFitText(document.getElementById('today-lunch-content'), 50); } // 🌟 이 부분이 바뀌었습니다!
         });
 
         window.onload = function() {
