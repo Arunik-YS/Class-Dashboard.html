@@ -272,7 +272,13 @@
                     <div class="realtime-clock" id="realtime-clock">00:00:00</div>
                 </div>
                 <div class="lunch-section">
-                    <h3 class="lunch-title">🍽️ 오늘의 급식</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #bbf7d0; margin-bottom: 10px; padding-bottom: 10px;">
+                        <h3 class="lunch-title" style="border: none; margin: 0; padding: 0;">🍽️ 오늘의 급식</h3>
+                        <div style="display: flex; gap: 5px;">
+                            <button onclick="changeLunchSize(5)" style="cursor: pointer; border: none; background: #bbf7d0; color: #166534; border-radius: 5px; padding: 5px 10px; font-family: 'Jua', sans-serif; font-size: 1.2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">크게 ➕</button>
+                            <button onclick="changeLunchSize(-5)" style="cursor: pointer; border: none; background: #bbf7d0; color: #166534; border-radius: 5px; padding: 5px 10px; font-family: 'Jua', sans-serif; font-size: 1.2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">작게 ➖</button>
+                        </div>
+                    </div>
                     <div id="today-lunch-content" class="lunch-content">등록된 급식 메뉴가 없습니다.</div>
                 </div>
             </div>
@@ -892,7 +898,6 @@
                 if (currentDayNum === 0 || currentDayNum === 6) currentDayNum = 1;
                 if (dayId === currentDayNum) {
                     document.getElementById('today-lunch-content').innerText = value;
-                    autoFitLunchText(document.getElementById('today-lunch-content'));
                 }
             }, 1000);
         }
@@ -905,7 +910,6 @@
             const el = document.getElementById('today-lunch-content');
             if (el) {
                 el.innerText = savedLunch;
-                setTimeout(() => autoFitLunchText(el), 50);
             }
         }
 
@@ -915,7 +919,6 @@
         window.addEventListener('resize', () => {
             if(document.getElementById('notice-tab').classList.contains('active')) { autoFitAllNoticeTexts(); }
             if(document.getElementById('memo-tab').classList.contains('active')) { autoFitText(document.getElementById('memo-task-content'), 120); }
-            if(document.getElementById('student-tab').classList.contains('active')) { autoFitLunchText(document.getElementById('today-lunch-content')); }
         });
 
         window.onload = function() {
@@ -925,6 +928,14 @@
             updateTimerDisplay();
             loadDataFromSheet();
         };
+
+        // 🌟 급식 글씨 수동 조절 변수 및 함수
+        let manualLunchSize = 35; // 기본 시작 크기 (원하는 숫자로 변경 가능)
+        function changeLunchSize(delta) {
+            manualLunchSize += delta;
+            if (manualLunchSize < 15) manualLunchSize = 15; // 너무 작아지지 않게 방어
+            document.getElementById('today-lunch-content').style.fontSize = manualLunchSize + 'px';
+        }
     </script>
 </body>
 </html>
