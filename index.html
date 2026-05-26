@@ -569,9 +569,6 @@
                     });
                 }
                 
-                const savedTalk = sheetMemoData['dashboardTeacherTalk'];
-                const talkEl = document.getElementById('teacher-talk-content');
-                if (talkEl && savedTalk) talkEl.innerHTML = savedTalk;
 
             } catch (error) {
                 console.error("데이터 로드 실패:", error);
@@ -656,9 +653,10 @@
                 }
             }
 
-            const savedTalk = sheetMemoData['dashboardTeacherTalk'] || '';
+            const savedTalk = sheetMemoData['teacher_talk_' + currentDayNum] || '';
             const teacherTr = document.createElement('tr');
             teacherTr.className = 'teacher-talk-row';
+            // innerText와 호환을 위해 div를 감싸거나 텍스트 노드로 처리하기 쉽게 만듭니다.
             teacherTr.innerHTML = `<td colspan="2">선생님과의 대화</td><td colspan="3" id="teacher-talk-content" contenteditable="true" oninput="saveTeacherTalk()">${savedTalk}</td>`;
             tbody.appendChild(teacherTr);
         }
@@ -670,12 +668,39 @@
         // 🌟 여러 입력창의 타이머를 관리할 객체 추가
         let saveTimeouts = {};
 
+        // 🌟 1. 학생 화면에서 직접 수정할 때 작동하는 함수
         function saveTeacherTalk() {
             const el = document.getElementById('teacher-talk-content');
             
+            // 현재 요일 계산
+            let currentDayNum = new Date().getDay();
+            if (currentDayNum === 0 || currentDayNum === 6) currentDayNum = 1;
+
             clearTimeout(saveTimeouts['teacherTalk']);
             saveTimeouts['teacherTalk'] = setTimeout(() => {
-                saveToSheet('dashboardTeacherTalk', el.innerHTML);
+                // innerText를 사용하여 줄바꿈 등의 텍스트를 깔끔하게 시트에 저장
+                saveToSheet('teacher_talk_' + currentDayNum, el.innerText);
+                
+                // 관리자 탭의 텍스트 박스 내용도 실시간으로 똑같이 업데이트
+                const adminInput = document.getElementById('talk-input-' + currentDayNum);
+                if (adminInput) adminInput.value = el.innerText;
+            }, 1000);
+        }
+
+        // 🌟 2. 관리자(시간표 관리) 탭에서 입력할 때 작동하는 함수
+        function saveTeacherTalkAdmin(dayId, value) {
+            clearTimeout(saveTimeouts['talk_admin_' + dayId]);
+            saveTimeouts['talk_admin_' + dayId] = setTimeout(() => {
+                saveToSheet('teacher_talk_' + dayId, value); 
+                
+                // 오늘 요일의 내용을 수정했다면 학생 화면에도 즉시 반영
+                let currentDayNum = new Date().getDay();
+                if (currentDayNum === 0 || currentDayNum === 6) currentDayNum = 1;
+                
+                if (dayId === currentDayNum) {
+                    const el = document.getElementById('teacher-talk-content');
+                    if (el) el.innerText = value;
+                }
             }, 1000);
         }
 
@@ -826,6 +851,16 @@
                         <textarea id="lunch-input-${day.id}" style="width: 100%; height: 80px; padding: 10px; font-family: 'Jua', sans-serif; font-size: 1.2rem; border: 1px solid #86efac; border-radius: 8px; resize: none;" oninput="saveLunchMenu(${day.id}, this.value)" placeholder="이곳에 ${day.name} 급식 메뉴를 입력하세요...">${lunchSaved}</textarea>
                     </div>
                 `;
+
+                // 🌟 선생님과의 대화 추가 부분 🌟
+                let talkSaved = sheetMemoData['teacher_talk_' + day.id] || '';
+                let talkHTML = `
+                    <div style="margin-top: 15px; padding: 15px; background: #fefce8; border: 1px solid #fef08a; border-radius: 8px;">
+                        <h4 style="margin:0 0 10px 0; color:#ca8a04; font-size:1.3rem;">💬 ${day.name} 선생님과의 대화</h4>
+                        <textarea id="talk-input-${day.id}" style="width: 100%; height: 60px; padding: 10px; font-family: 'Jua', sans-serif; font-size: 1.2rem; border: 1px solid #fde047; border-radius: 8px; resize: none;" oninput="saveTeacherTalkAdmin(${day.id}, this.value)" placeholder="이곳에 ${day.name} 선생님과의 대화 내용을 미리 적어두세요...">${talkSaved}</textarea>
+                    </div>
+                `;
+                
                 panel.innerHTML = tableHTML + lunchHTML; 
                 // --- 여기까지 추가 ---
                 
